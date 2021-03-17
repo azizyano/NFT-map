@@ -12,7 +12,7 @@ import {
 } from '@celo/dappkit'
 import { toTxResult } from "@celo/connect"
 import * as Linking from 'expo-linking'
-import HelloWorldContract from './contracts/HelloWorld.json'
+import Nftmap from './contracts/NFTMap.json'
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 const { SkynetClient } = require('@nebulous/skynet');
@@ -22,47 +22,38 @@ YellowBox.ignoreWarnings(['Warning: The provided value \'moz', 'Warning: The pro
 
 export default class App extends React.Component {
 
-  // Set the defaults for the state
   state = {
     address: 'Not logged in',
     phoneNumber: 'Not logged in',
     cUSDBalance: 'Not logged in',
-    helloWorldContract: {},
-    contractName: '',
-    location: 'not find',
-    latitude: 'not find',
-    longitude: 'not find',
+    Nftmap: {},
+    nftlist: '0',
+    location: 'not fond',
+    latitude: 'not fond',
+    longitude: 'not fond',
     errorMsg: '',
     alow : null,
     image: null,
     link: '',
     textInput: ''
   }
-
-  // This function is called when the page successfully renders
   componentDidMount = async () => {
 
     let { status } = await Location.requestPermissionsAsync();
-          if (status !== 'granted') {
+      if (status !== 'granted') {
         this.setState({errorMsg:'Permission to access location was denied'});
-        return;
-      }
+      return;
+    }
     let location = await Location.getCurrentPositionAsync({});
 
     this.setState({latitude: JSON.stringify(location.coords.latitude),longitude: JSON.stringify(location.coords.longitude)  })
-    // Check the Celo network ID
     const networkId = await web3.eth.net.getId();
-    
-    // Get the deployed HelloWorld contract info for the appropriate network ID
-    const deployedNetwork = HelloWorldContract.networks[networkId];
-
-    // Create a new contract instance with the HelloWorld contract info
+    const deployedNetwork = Nftmap.networks[networkId];
     const instance = new web3.eth.Contract(
-      HelloWorldContract.abi,
+      Nftmap.abi,
       deployedNetwork && deployedNetwork.address
     );
-    // Save the contract instance 
-    this.setState({ helloWorldContract: instance })
+    this.setState({ Nftmap: instance })
   }
   alowpic = async () => {
         if (Platform.OS !== 'web') {
@@ -87,45 +78,24 @@ export default class App extends React.Component {
     }
   };
   upload = async () => {
-    	// upload
     const skylink = await client.uploadFile(this.state.image.uri);
     console.log(`Upload successful, skylink: ${skylink}`);
     this.setState({link: this.state.image.uri})
   }
   login = async () => {
-    
-    // A string you can pass to DAppKit, that you can use to listen to the response for that request
     const requestId = 'login'
-    
-    // A string that will be displayed to the user, indicating the DApp requesting access/signature
-    const dappName = 'Hello Celo'
-    
-    // The deeplink that the Celo Wallet will use to redirect the user back to the DApp with the appropriate payload.
+    const dappName = 'Celo NFT'
     const callback = Linking.makeUrl('/my/path')
-  
-    // Ask the Celo Alfajores Wallet for user info
     requestAccountAddress({
       requestId,
       dappName,
       callback,
     })
-  
-    // Wait for the Celo Wallet response
     const dappkitResponse = await waitForAccountAuth(requestId)
-
-    // Set the default account to the account returned from the wallet
     kit.defaultAccount = dappkitResponse.address
-
-    // Get the stabel token contract
     const stableToken = await kit.contracts.getStableToken()
-
-    // Get the user account balance (cUSD)
     const cUSDBalanceBig = await stableToken.balanceOf(kit.defaultAccount)
-    
-    // Convert from a big number to a string
     let cUSDBalance = cUSDBalanceBig.toString()
-    
-    // Update state
     this.setState({ cUSDBalance, 
                     isLoadingBalance: false,
                     address: dappkitResponse.address, 
@@ -133,44 +103,34 @@ export default class App extends React.Component {
   }
 
   read = async () => {
-    
-    // Read the name stored in the HelloWorld contract
-    let name = await this.state.helloWorldContract.methods.getName().call()
-    
-    // Update state
-    this.setState({ contractName: name })
+    let name = await this.state.Nftmap.methods.balanceOf(this.state.address).call()
+    this.setState({ nftlist: name })
   }
 
   write = async () => {
-    const requestId = 'update_name'
-    const dappName = 'Hello Celo'
+    const requestId = 'create_nft'
+    const dappName = 'Celo NFT'
     const callback = Linking.makeUrl('/my/path')
-
-    // Create a transaction object to update the contract with the 'textInput'
-    const txObject = await this.state.helloWorldContract.methods.setName(this.state.textInput)
-
-    // Send a request to the Celo wallet to send an update transaction to the HelloWorld contract
+    const txObject = await this.state.Nftmap.methods.newEntity(
+      this.state.address,
+      this.state.latitude,
+      this.state.longitude)
     requestTxSig(
       kit,
       [
         {
           from: this.state.address,
-          to: this.state.helloWorldContract.options.address,
+          to: this.state.Nftmap.options.address,
           tx: txObject,
           feeCurrency: FeeCurrency.cUSD
         }
       ],
       { requestId, dappName, callback }
     )
-
-    // Get the response from the Celo wallet
     const dappkitResponse = await waitForSignedTxs(requestId)
     const tx = dappkitResponse.rawTxs[0]
-    
-    // Get the transaction result, once it has been included in the Celo blockchain
     let result = await toTxResult(kit.web3.eth.sendSignedTransaction(tx)).waitReceipt()
-
-    console.log(`Hello World contract update transaction receipt: `, result)  
+    console.log(`the NFT was created for this location: `, result)  
   }
  
   onChangeText = async (text) => {
@@ -186,8 +146,7 @@ export default class App extends React.Component {
         <Text style={styles.baseText}>Did you take a beautiful picture in a place in this land!
             transfer it to NFT. </Text>
         <Text style={styles.baseText} >your localisation is:
-        <Text>latitude: {this.state.latitude}</Text>
-        ,
+        <Text>latitude: {this.state.latitude} , </Text>
         <Text>longitude: {this.state.longitude}</Text> </Text>  
         
         <Button title="Chose an image" onPress={this.pickImage} />
@@ -202,19 +161,13 @@ export default class App extends React.Component {
         <Text>{this.state.address}</Text>
         <Text>Phone number: {this.state.phoneNumber}</Text>
         <Text>cUSD Balance: {this.state.cUSDBalance}</Text>
-        <Text style={styles.title}>Read HelloWorld</Text>
-        <Button title="Read Contract Name" 
+        <Text style={styles.title}>Chek you arrdess if you have NFTs</Text>
+        <Button title="nft balance" 
           onPress={()=> this.read()} />
-        <Text>Contract Name: {this.state.contractName}</Text>
+        <Text>Your NFTs: {this.state.nftlist}</Text>
         
-        <Text style={styles.title}>Write to HelloWorld</Text>
-        <Text>New contract name:</Text>
-        <TextInput
-          style={{  borderColor: 'black', borderWidth: 1, backgroundColor: 'white' }}
-          placeholder="input new name here"
-          onChangeText={text => this.onChangeText(text)}
-          value={this.state.textInput}
-          />
+        <Text style={styles.title}>create your NFT</Text>
+        <Text>Create:</Text>
         <Button style={{padding: 30}} title="update contract name" 
           onPress={()=> this.write()} />
       </View>
