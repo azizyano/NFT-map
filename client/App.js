@@ -16,6 +16,8 @@ import Nftmap from './contracts/NFTMap.json'
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 const { SkynetClient } = require('@nebulous/skynet');
+
+// create a client
 const client = new SkynetClient();
 
 YellowBox.ignoreWarnings(['Warning: The provided value \'moz', 'Warning: The provided value \'ms-stream'])
@@ -78,9 +80,13 @@ export default class App extends React.Component {
     }
   };
   upload = async () => {
-    const skylink = await client.uploadFile(this.state.image.uri);
-    console.log(`Upload successful, skylink: ${skylink}`);
-    this.setState({link: this.state.image.uri})
+      // upload
+      const skylink = await client.uploadFile(this.state.image);
+      alert(`Upload successful, skylink: ${skylink}`);
+
+      // download
+      await client.downloadFile("./dst.jpg", skylink);
+      console.log('Download successful');
   }
   login = async () => {
     const requestId = 'login'
@@ -108,7 +114,7 @@ export default class App extends React.Component {
   }
 
   write = async () => {
-    const requestId = 'create_nft'
+    const requestId = 'login'
     const dappName = 'Celo NFT'
     const callback = Linking.makeUrl('/my/path')
     const txObject = await this.state.Nftmap.methods.newEntity(
