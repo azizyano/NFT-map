@@ -1,8 +1,8 @@
 import React from 'react'
 import './global'
 import { web3, kit } from './root'
-import { Image, StyleSheet, Text, TextInput, Button, View, YellowBox, TouchableOpacity, Platform,
-SafeAreaView, ScrollView } from 'react-native'
+import { Image, StyleSheet, Text, Button,TouchableOpacity, TextInput, View, YellowBox } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient';
 import {   
   requestTxSig,
   waitForSignedTxs,
@@ -12,122 +12,98 @@ import {
 } from '@celo/dappkit'
 import { toTxResult } from "@celo/connect"
 import * as Linking from 'expo-linking'
-import Nftmap from './contracts/NFTMap.json'
-import * as Location from 'expo-location';
-import * as ImagePicker from 'expo-image-picker';
-const { SkynetClient } = require('@nebulous/skynet');
+import CeloBet from './contracts/CeloBet.json'
 
-// create a client
-const client = new SkynetClient();
 
 YellowBox.ignoreWarnings(['Warning: The provided value \'moz', 'Warning: The provided value \'ms-stream'])
 
 export default class App extends React.Component {
 
+  // Set the defaults for the state
   state = {
     address: 'Not logged in',
-    phoneNumber: 'Not logged in',
+    celoBalance: 'Not logged in',
     cUSDBalance: 'Not logged in',
-    Nftmap: {},
-    nftlist: '0',
-    location: 'not fond',
-    latitude: 'not fond',
-    longitude: 'not fond',
-    errorMsg: '',
-    alow : null,
-    image: null,
-    link: '',
-    textInput: ''
+    CeloBet: {}
   }
+  constructor(props) {
+    super(props);
+    this.state = {text: ''};
+  }
+  // This function is called when the page successfully renders
   componentDidMount = async () => {
-
-    let { status } = await Location.requestPermissionsAsync();
-      if (status !== 'granted') {
-        this.setState({errorMsg:'Permission to access location was denied'});
-      return;
-    }
-    let location = await Location.getCurrentPositionAsync({});
-
-    this.setState({latitude: JSON.stringify(location.coords.latitude),longitude: JSON.stringify(location.coords.longitude)  })
+    
+    // Check the Celo network ID
     const networkId = await web3.eth.net.getId();
-    const deployedNetwork = Nftmap.networks[networkId];
+    
+    // Get the deployed HelloWorld contract info for the appropriate network ID
+    const deployedNetwork = CeloBet.networks[networkId];
+
+    // Create a new contract instance with the HelloWorld contract info
     const instance = new web3.eth.Contract(
-      Nftmap.abi,
+      CeloBet.abi,
       deployedNetwork && deployedNetwork.address
     );
-    this.setState({ Nftmap: instance })
-  }
-  alowpic = async () => {
-        if (Platform.OS !== 'web') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          alert('Sorry, we need camera roll permissions to make this work!');
-        }
-      }
-  }
-  pickImage = async () => {
-  let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
 
-    console.log(result);
-
-    if (!result.cancelled) {
-      this.setState({image: result.uri });
-    }
-  };
-  upload = async () => {
-      // upload
-      const skylink = await client.uploadFile(this.state.image);
-      alert(`Upload successful, skylink: ${skylink}`);
-
-      // download
-      await client.downloadFile("./dst.jpg", skylink);
-      console.log('Download successful');
+    // Save the contract instance
+    this.setState({ CeloBet: instance })
   }
+
   login = async () => {
+    
+    // A string you can pass to DAppKit, that you can use to listen to the response for that request
     const requestId = 'login'
-    const dappName = 'Celo NFT'
+    
+    // A string that will be displayed to the user, indicating the DApp requesting access/signature
+    const dappName = 'Celo Bet'
+    
+    // The deeplink that the Celo Wallet will use to redirect the user back to the DApp with the appropriate payload.
     const callback = Linking.makeUrl('/my/path')
+  
+    // Ask the Celo Alfajores Wallet for user info
     requestAccountAddress({
       requestId,
       dappName,
       callback,
     })
+  
+    // Wait for the Celo Wallet response
     const dappkitResponse = await waitForAccountAuth(requestId)
+
+    // Set the default account to the account returned from the wallet
     kit.defaultAccount = dappkitResponse.address
+    let balance = await kit.web3.eth.getBalance(dappkitResponse.address)
+    balance= balance/10**18
+    // Get the stabel token contract
     const stableToken = await kit.contracts.getStableToken()
+
+    // Get the user account balance (cUSD)
     const cUSDBalanceBig = await stableToken.balanceOf(kit.defaultAccount)
-    let cUSDBalance = cUSDBalanceBig.toString()
+    
+    // Convert from a big number to a string
+    let cUSDBalance = cUSDBalanceBig.toString()/10**18
+    // Update state
     this.setState({ cUSDBalance, 
+                    celoBalance: balance,
                     isLoadingBalance: false,
-                    address: dappkitResponse.address, 
-                    phoneNumber: dappkitResponse.phoneNumber })
+                    address: dappkitResponse.address })
   }
 
-  read = async () => {
-    let name = await this.state.Nftmap.methods.balanceOf(this.state.address).call()
-    this.setState({ nftlist: name })
-  }
-
-  write = async () => {
-    const requestId = 'login'
-    const dappName = 'Celo NFT'
+  async makeBet(bet, amount) {
+    const requestId = 'spinup'
+    const dappName = 'Celo Bet'
     const callback = Linking.makeUrl('/my/path')
-    const txObject = await this.state.Nftmap.methods.newEntity(
-      this.state.address,
-      this.state.latitude,
-      this.state.longitude)
+    var randomSeed = Math.floor(Math.random() * Math.floor(1e9))
+    const txObject = await this.state.CeloBet.methods.game(bet, randomSeed)
+    await kit.sendTransactionObject(txObject, {from: this.state.address})
     requestTxSig(
       kit,
       [
         {
           from: this.state.address,
-          to: this.state.Nftmap.options.address,
+          to: this.state.CeloBet.options.address,
           tx: txObject,
+          value: amount,
           feeCurrency: FeeCurrency.cUSD
         }
       ],
@@ -136,50 +112,81 @@ export default class App extends React.Component {
     const dappkitResponse = await waitForSignedTxs(requestId)
     const tx = dappkitResponse.rawTxs[0]
     let result = await toTxResult(kit.web3.eth.sendSignedTransaction(tx)).waitReceipt()
-    console.log(`the NFT was created for this location: `, result)  
+    console.log(`Hello World contract update transaction receipt: `, result)
+    this.state.CeloBet.events.Result({}, async (error, event) => {
+      const verdict = event.returnValues.winAmount
+      if(verdict === '0') {
+        console.log('lose :(')
+      } else {
+        console.log('WIN!')
+      }
+    })
   }
- 
-  onChangeText = async (text) => {
-    this.setState({textInput: text})
+  spindown = async () => {
+    const requestId = 'qpinup'
+    const dappName = 'Celo Bet'
+    const callback = Linking.makeUrl('/my/path')
+    var randomSeed = Math.floor(Math.random() * Math.floor(1e9))
+    const txObject = await this.state.CeloBet.methods.game(1, randomSeed)
+    await kit.sendTransactionObject(txObject, {from: this.state.address})
+    requestTxSig(
+      kit,
+      [
+        {
+          from: this.state.address,
+          to: this.state.CeloBet.options.address,
+          tx: txObject,
+          value: this.state.amount*10^18,
+          feeCurrency: FeeCurrency.cUSD
+        }
+      ],
+      { requestId, dappName, callback }
+    )
+    const dappkitResponse = await waitForSignedTxs(requestId)
+    const tx = dappkitResponse.rawTxs[0]
+    let result = await toTxResult(kit.web3.eth.sendSignedTransaction(tx)).waitReceipt()
+    console.log(`Hello World contract update transaction receipt: `, result)
   }
+
+
 
   render(){
     return (
-      <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
       <View style={styles.container}>
-        <Image resizeMode='contain' source={require("./assets/white-wallet-rings.png")}></Image>
-        <Text style={styles.baseText}>Did you take a beautiful picture in a place in this land!
-            transfer it to NFT. </Text>
-        <Text style={styles.baseText} >your localisation is:
-        <Text>latitude: {this.state.latitude} , </Text>
-        <Text>longitude: {this.state.longitude}</Text> </Text>  
-        
-        <Button title="Chose an image" onPress={this.pickImage} />
-        {this.state.image && <Image source={{ uri: this.state.image }} style={{ width: 200, height: 200 }} />}
-        <Button title="Upload to Skylink" 
-          onPress={()=> this.upload()} />
-          <Text>your link: {this.state.link}</Text>
-        <Button title="login()" 
-          onPress={()=> this.login()} />
-                <Text style={styles.title}>Account Info:</Text>
-        <Text>Current Account Address:</Text>
-        <Text>{this.state.address}</Text>
-        <Text>Phone number: {this.state.phoneNumber}</Text>
-        <Text>cUSD Balance: {this.state.cUSDBalance}</Text>
-        <Text style={styles.title}>Chek you arrdess if you have NFTs</Text>
-        <Button title="nft balance" 
-          onPress={()=> this.read()} />
-        <Text>Your NFTs: {this.state.nftlist}</Text>
-        
-        <Text style={styles.title}>create your NFT</Text>
-        <Text>Create:</Text>
-        <Button style={{padding: 30}} title="update contract name" 
-          onPress={()=> this.write()} />
+        <LinearGradient
+        colors={['rgba(0,0,0,0.8)', 'transparent']}
+        style={styles.background}
+      />
+        <View style={styles.top} >
+          <Button title="login()" style={styles.button}
+            onPress={()=> this.login()} />
+          <Text>{this.state.address}</Text>
+          <Text>cUSD Balance: {this.state.cUSDBalance}</Text>
+          <Text>Celo Balance: {this.state.celoBalance}</Text>
+        </View>
+        <Image resizeMode='contain' source={require("./assets/spin2win.png")}></Image>
+        <Text>celo bet amount </Text>
+        <TextInput
+          style={{height: 40}}
+          placeholder="Bet amount"
+          onChangeText={(text) => this.setState({text})}
+          value={this.state.text}
+        />
+        <Text style={{padding: 10, fontSize: 42}}>
+          {this.state.text}
+        </Text>
+        <Text>Low </Text>
+        <Text>Hight</Text>
+        <View style={styles.fixToText}>
+          <TouchableOpacity onPress={() => this.spinup()} style={styles.buttonup}>
+          <Text style={styles.buttonText}>Spin Up</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => this.spindown()} style={styles.buttondown}>
+          <Text style={styles.buttonText}>Spin Down</Text>
+          </TouchableOpacity>
+        </View>
+      
       </View>
-
-    </ScrollView>
-    </SafeAreaView>
     );
   }
 }
@@ -187,19 +194,42 @@ export default class App extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#61dafb',
+    backgroundColor: '#673ab7',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  baseText: {
-    marginTop: 16,
-    textAlign: 'center',
-    paddingVertical: 8,
-    fontSize: 20,
+  top: {
+    flex: 0.15,
+    backgroundColor: 'grey',
+    borderWidth: 1,
+    padding: 60,
+    borderRadius: 20,
   },
   title: {
     marginVertical: 8, 
     fontSize: 20, 
     fontWeight: 'bold'
-  }
+  },
+  button: {
+    backgroundColor: "blue",
+    padding: 20,
+    borderRadius: 10,
+  },
+  buttonup: {
+    backgroundColor: "red",
+    padding: 20,
+    borderRadius: 10,
+  },
+  buttondown: {
+    backgroundColor: "blue",
+    padding: 20,
+    borderRadius: 5,
+  },
+  buttonText: {
+    fontSize: 20,
+    color: '#fff',
+  },
+  fixToText: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 });
