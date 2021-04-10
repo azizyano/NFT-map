@@ -78,8 +78,6 @@ if you want to use your mobile open expo app and scan to QR  code.
 
 demo 
 
-[![IMAGE ALT TEXT HERE](https://www.youtube.com/watch?v=V2O95ZXmNx8/0.jpg)](https://www.youtube.com/watch?v=V2O95ZXmNx8)
-
 https://www.youtube.com/watch?v=V2O95ZXmNx8
 
 
