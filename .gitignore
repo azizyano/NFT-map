@@ -12,7 +12,7 @@ npm-debug.*
 web-build/
 web-report/
 build/
-.secret
+secret
 
 # macOS
 .DS_Store
