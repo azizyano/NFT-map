@@ -15,7 +15,7 @@ Celo spin is a game that users can bet for an Celo amount an get  chance to win 
  to get a random result. the chance to win or lose is 50%. the contract needs to be funded. the creator of the contract can deposit or withdraw fun at any time.
  
  
-##Demo
+## Demo
 
 login to the network using you alfagores celo wallet
 
