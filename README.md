@@ -22,6 +22,9 @@ submit your transaction after allow it using your wallet
 
 
 ![](https://github.com/azizyano/celo-spin/blob/main/demo_for_a_celo_dapp%20(2).gif)
+
+
+
 demo in youtube
 https://www.youtube.com/watch?v=V2O95ZXmNx8
 
