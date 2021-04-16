@@ -8,10 +8,15 @@ this project is a fork from https://github.com/critesjosh/celo-dappkit so plz ta
 cd client 
 npm run start
 ```
-Celo spin is a game that users can bet for an Celo amount an get  chance to win x
+Celo spin is a game that users can bet for an Celo amount an get  chance to win x2.
+
  the contract use the function randomResult = uint256(keccak256(abi.encode(now, block.number, blockhash(block.number - Seed)))); 
+ 
  to get a random result. the chance to win or lose is 50%. the contract needs to be funded. the creator of the contract can deposit or withdraw fun at any time.
-demo 
+ 
+ 
+##Demo
+
 login to the network using you alfagores celo wallet
 
 
