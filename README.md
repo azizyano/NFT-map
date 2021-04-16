@@ -12,8 +12,8 @@ Celo spin is a game that users can bet for an Celo amount an get  chance to win 
  the contract use the function randomResult = uint256(keccak256(abi.encode(now, block.number, blockhash(block.number - Seed)))); 
  to get a random result. the chance to win or lose is 50%. the contract needs to be funded. the creator of the contract can deposit or withdraw fun at any time.
 demo 
-[login](https://github.com/azizyano/celo-spin/blob/main/demo_for_a_celo_dapp%20(1).gif)
-[bet amount](https://github.com/azizyano/celo-spin/blob/main/demo_for_a_celo_dapp%20(2).gif)
+![](https://github.com/azizyano/celo-spin/blob/main/demo_for_a_celo_dapp%20(1).gif)
+![](https://github.com/azizyano/celo-spin/blob/main/demo_for_a_celo_dapp%20(2).gif)
 
 https://www.youtube.com/watch?v=V2O95ZXmNx8
 
